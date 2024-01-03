@@ -282,6 +282,23 @@ int my_utf8_decode(char *input, char *output) {
     }
     return 0;
 }
+ //Returns whether the two strings are the same (similar result set to strcmp() )
+int my_utf8_strcmp(unsigned char *string1, unsigned char *string2) {
+     int index = 0;
+     int result = 0;
+     char *stringA = hex_bin_converter((unsigned char *) string1);
+     char *stringB = hex_bin_converter((unsigned char *) string2);
+     while (stringA[index] != '\0') {
+         if (stringA[index] == stringB[index]) {
+             result = 1;
+         } else {
+             result = 0;
+             break;
+         }
+         index++;
+     }
+     return result;
+ }
 //Returns the UTF8 encoded character at the location specified.
 //If the input string is improperly encoded, this function should return NULL to indicate an error.
 char *my_utf8_charat(unsigned char *string, int index) {
@@ -363,8 +380,9 @@ char *my_utf8_charat(unsigned char *string, int index) {
     return NULL;
 }
 
+
 int main () {
-    char utf8[] = {0xD7, 0x90, 0xD7, 0xA8, 0xD7, 0x99, 0xD7, 0x94, 0xE0, 0xA4, 0xB9, };
+    unsigned char utf8[] = {0xD7, 0x90, 0xD7, 0xA8, 0xD7, 0x99, 0xD7, 0x94, 0xE0, 0xA4, 0xB9, '\0' };
 
 
     //Test cconverter
@@ -394,7 +412,14 @@ int main () {
     printf("\ncharat function:\n");
     int index = 2;
     char *charc = my_utf8_charat(utf8, index);
-    printf("index: %d\nchar: %s", index, charc);
+    printf("index: %d\nchar: %s\n", index, charc);
+
+    //test strcmp
+    printf("\nstrcmp function:\n");
+    unsigned char str1[] = {0xD7, 0x90, '\0' };
+    unsigned char str2[] = {0xD7, 0x91, '\0' };
+    int match = my_utf8_strcmp(str1, str2);
+    printf("str1: %s\nstr2: %s\nmatch: %d", str1, str2, match);
 
     //Test encode
 //    char* output;
