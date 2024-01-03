@@ -65,6 +65,59 @@ char* binary_to_hex(const char binary[]) {
     return hexString;
 }
 
+int* byte_checker(unsigned char *string) {
+    char *bin_string = hex_bin_converter(string);
+    int index = 0;
+    int bytes = 0;
+    int arr_index = 0;
+
+    int *result = (int *) malloc(10 * sizeof(int));
+    if (result != NULL)
+        while (bin_string[index] != '\0') {
+
+            //1 byte
+            if (bin_string[index] == '0') {
+                index += 8;
+                bytes = 1;
+                result[arr_index++] = bytes;
+
+
+            }
+                // 2 bytes
+            else if (bin_string[index] == '1' && bin_string[index + 1] == '1' && bin_string[index + 2] == '0'
+                     && bin_string[index + 8] == '1' && bin_string[index + 9] == '0') {
+                index += 16;
+                bytes = 2;
+                result[arr_index++] = bytes;
+
+            }
+                // 3 bytes
+            else if (bin_string[index] == '1' && bin_string[index + 1] == '1' && bin_string[index + 2] == '1' &&
+                     bin_string[index + 3] == '0'
+                     && bin_string[index + 8] == '1' && bin_string[index + 9] == '0'
+                     && bin_string[index + 16] == '1' && bin_string[index + 17] == '0') {
+                index += 24;
+                bytes = 3;
+                result[arr_index++] = bytes;
+            }
+                //4 bytes
+            else if (bin_string[index] == '1' && bin_string[index + 1] == '1' && bin_string[index + 2] == '1' &&
+                     bin_string[index + 3] == '1' &&
+                     bin_string[index + 4] == '0'
+                     && bin_string[index + 8] == '1' && bin_string[index + 9] == '0'
+                     && bin_string[index + 16] == '1' && bin_string[index + 17] == '0'
+                     && bin_string[index + 24] == '1' && bin_string[index + 25] == '0') {
+                index += 32;
+                bytes = 4;
+                result[arr_index++] = bytes;
+
+            }
+
+            result[arr_index] = -1;
+        }
+    free(bin_string);
+    return result;
+}
 
 
 
@@ -242,43 +295,24 @@ int my_utf8_encode(char *input, char *output) {
 // convert back to hex
 //Takes a UTF8 encoded binary, and returns a binary, with ASCII representation where possible, and UTF8 character representation for non-ASCII characters.
 int my_utf8_decode(char *input, char *output) {
-    char* binary = hex_bin_converter(input);
+    int *bytes_arr = byte_checker(input);
     int index = 0;
+    int output_index = 0;
+    int result = 0;
 
-    while (binary[index] != '\0') {
-        //1 byte
-        if (binary[index] == '0'){
-            return
-
-            index += 8;
-
+    while (input[index] != '\0') {
+        int bytes = bytes_arr[index / 2];
+        if (bytes == 1) {
+            output = (char *) 11;
+        } else if (bytes == 2) {
+            //take only the 4-8th bit and then the 11th-16th bit 
+            output = (char *) 22;
+        } else if (bytes == 3) {
+            output = (char *) 33;
+        } else if (bytes == 4) {
+            output = (char *) 44;
         }
-            // 2 bytes
-        else if (binary[index] == '1' && binary[index + 1] == '1' && binary[index + 2] == '0'
-                 && binary[index + 8] == '1' && binary[index + 9] == '0') {
-
-            index += 16;
-
-        }
-            // 3 bytes
-        else if (binary[index] == '1' && binary[index + 1] == '1' && binary[index + 2] == '1' && binary[index + 3] == '0'
-                 && binary[index + 8] == '1' && binary[index + 9] == '0'
-                 && binary[index + 16] == '1' && binary[index + 17] == '0') {
-
-            index += 24;
-
-        }
-            //4 bytes
-        else if (binary[index] == '1' && binary[index + 1] == '1' && binary[index + 2] == '1' && binary[index + 3] == '1' &&
-                 binary[index + 4] == '0'
-                 && binary[index + 8] == '1' && binary[index + 9] == '0'
-                 && binary[index + 16] == '1' && binary[index + 17] == '0'
-                 && binary[index + 24] == '1' && binary[index + 25] == '0') {
-
-            index += 32;
-
-        }
-
+    index++;
     }
     return 0;
 }
@@ -290,15 +324,33 @@ int my_utf8_strcmp(unsigned char *string1, unsigned char *string2) {
      char *stringB = hex_bin_converter((unsigned char *) string2);
      while (stringA[index] != '\0') {
          if (stringA[index] == stringB[index]) {
-             result = 1;
-         } else {
              result = 0;
+         } else {
+             result = 1;
              break;
          }
          index++;
      }
      return result;
- }
+
+    }
+
+//my own function that concatanates two strings
+char *my_strcat(unsigned char *string1, unsigned char *string2){
+        char* result;
+        int index1 = 0;
+        int index2 = 0;
+        int res_index = 0;
+        while(string1[index1] != '\0'){
+            result[res_index++] = string1[index1++];
+        }
+        while(string2[index2] != '\0') {
+            result[res_index++] = string2[index2++];
+        }
+        return result;
+    }
+
+
 //Returns the UTF8 encoded character at the location specified.
 //If the input string is improperly encoded, this function should return NULL to indicate an error.
 char *my_utf8_charat(unsigned char *string, int index) {
@@ -382,12 +434,19 @@ char *my_utf8_charat(unsigned char *string, int index) {
 
 
 int main () {
-    unsigned char utf8[] = {0xD7, 0x90, 0xD7, 0xA8, 0xD7, 0x99, 0xD7, 0x94, 0xE0, 0xA4, 0xB9, '\0' };
+    unsigned char utf8[] = {0xD7, 0x90, 0xD7, 0xA8, 0xD7, 0x99, 0xD7, 0x94, 0xE0, 0xA4, 0xB9, '\0'};
 
-
-    //Test cconverter
+    //Test converter
     char *binary = hex_bin_converter(utf8);
     printf("\nHex to Binary Converter\nhex input: %s\nbinary output: %s\n", utf8, binary);
+
+    //byte checker
+    int* result = byte_checker(utf8);
+    printf("\nByte checker\n");
+    for (int i = 0; result[i] != -1; i++) {
+        printf("Character %d: %d bytes\n", i + 1, result[i]);
+    }
+
 
     //Test check function
     printf("\nCheck UTF-8 Function:\n");
@@ -419,15 +478,23 @@ int main () {
     unsigned char str1[] = {0xD7, 0x90, '\0' };
     unsigned char str2[] = {0xD7, 0x91, '\0' };
     int match = my_utf8_strcmp(str1, str2);
-    printf("str1: %s\nstr2: %s\nmatch: %d", str1, str2, match);
+    printf("str1: %s\nstr2: %s\nmatch: %d\n", str1, str2, match);
+
+    //test my strcat
+//    printf("\nmy strcat function:\n");
+//    unsigned char *cat = my_strcat(str1, str2);
+//    printf("str1: %s\nstr2: %s\nmatch: %d", str1, str2, cat);
 
     //Test encode
 //    char* output;
 //    my_utf8_encode(newstr, output);
 //    printf("Encode function:\ninput:%s\noutput:%s\n", newstr, output );
 //
-//    //Test decode
-//    my_utf8_decode(newstr, output);
-//    printf("decode function:\ninput:%s\noutput:%s\n", newstr, output );
-//
+    //Test decode
+    printf("\nDecoder:\n");
+    char output[20];
+    if (my_utf8_decode(utf8, output) == 0) {
+        printf("Input: %s\nDecoded string: %s\n", utf8, output);
+    }
+
 }
