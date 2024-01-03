@@ -10,146 +10,63 @@
 #include <string.h>
 
 char* hex_bin_converter(const char* hex) {
-    int index = 0;
-    int result_index = 0;
-    char *result = (char *) malloc(100);
+    int binaryLength = 0;
+    while (hex[binaryLength] != '\0') {
+        binaryLength++;
+    }
+    binaryLength *= 8;
 
-    // if in the /u form skip the /u and convert from hex to binary
-    while (hex[index]) {
-        if (hex[index] == 'u' || hex[index] == '\\') {
-            index++;
-        }
-        switch (hex[index]) {
-            case '0':
-                result[result_index++] = '0';
-                result[result_index++] = '0';
-                result[result_index++] = '0';
-                result[result_index++] = '0';
-                break;
-            case '1':
-                result[result_index++] = '0';
-                result[result_index++] = '0';
-                result[result_index++] = '0';
-                result[result_index++] = '1';
-                break;
-            case '2':
-                result[result_index++] = '0';
-                result[result_index++] = '0';
-                result[result_index++] = '1';
-                result[result_index++] = '0';
-                break;
-            case '3':
-                result[result_index++] = '0';
-                result[result_index++] = '0';
-                result[result_index++] = '1';
-                result[result_index++] = '1';
-                break;
-            case '4':
-                result[result_index++] = '0';
-                result[result_index++] = '1';
-                result[result_index++] = '0';
-                result[result_index++] = '0';
-                break;
-            case '5':
-                result[result_index++] = '0';
-                result[result_index++] = '1';
-                result[result_index++] = '0';
-                result[result_index++] = '1';
-                break;
-            case '6':
-                result[result_index++] = '0';
-                result[result_index++] = '1';
-                result[result_index++] = '1';
-                result[result_index++] = '0';
-                break;
-            case '7':
-                result[result_index++] = '0';
-                result[result_index++] = '1';
-                result[result_index++] = '1';
-                result[result_index++] = '1';
-                break;
-            case '8':
-                result[result_index++] = '1';
-                result[result_index++] = '0';
-                result[result_index++] = '0';
-                result[result_index++] = '0';
-                break;
-            case '9':
-                result[result_index++] = '1';
-                result[result_index++] = '0';
-                result[result_index++] = '0';
-                result[result_index++] = '1';
-                break;
-            case 'A':
-                result[result_index++] = '1';
-                result[result_index++] = '0';
-                result[result_index++] = '1';
-                result[result_index++] = '0';
-                break;
-            case 'B':
-                result[result_index++] = '1';
-                result[result_index++] = '0';
-                result[result_index++] = '1';
-                result[result_index++] = '1';
-                break;
-            case 'C':
-                result[result_index++] = '1';
-                result[result_index++] = '1';
-                result[result_index++] = '0';
-                result[result_index++] = '0';
-                break;
-            case 'D':
-                result[result_index++] = '1';
-                result[result_index++] = '1';
-                result[result_index++] = '0';
-                result[result_index++] = '1';
-                break;
-            case 'E':
-                result[result_index++] = '1';
-                result[result_index++] = '1';
-                result[result_index++] = '1';
-                result[result_index++] = '0';
-                break;
-            case 'F':
-                result[result_index++] = '1';
-                result[result_index++] = '1';
-                result[result_index++] = '1';
-                result[result_index++] = '1';
-                break;
-        }
+    char *binaryString = (char *) malloc(binaryLength + 1); // +1 for the null terminator
 
-
-        index++;
+    if (binaryString == NULL) {
+        fprintf(stderr, "Memory allocation failed\n");
+        exit(EXIT_FAILURE);
     }
 
-    result[result_index] = '\0';
-    return result;
+    int index = 0;
+    for (int i = 0; hex[i] != '\0'; i++) {
+        for (int j = 7; j >= 0; j--) {
+            binaryString[index++] = ((hex[i] >> j) & 1) + '0';
+        }
+        //binaryString[index++] = ' ';
+    }
+    binaryString[index] = '\0';
+
+    return binaryString;
 }
 
-char* bin_to_hex_converter(const char* binary) {
+
+char* binary_to_hex(const char binary[]) {
+    int bin_len = 0;
     int index = 0;
-    int result_index = 0;
-    char* result = (char*)malloc(100); // Adjust the size based on your needs
+    int currentHexDigit = 0;
+    int bitPosition = 0;
 
-    while (binary[index]) {
-        char chunk[5] = { binary[index], binary[index + 1], binary[index + 2], binary[index + 3], '\0' };
-        unsigned int decimal = strtol(chunk, NULL, 2);
-
-        if (decimal < 10) {
-            result[result_index++] = '0' + decimal;
-        }
-        else {
-            result[result_index++] = 'A' + (decimal - 10);
-        }
-
-        printf("Processing chunk: %s (Decimal: %u)\n", chunk, decimal);
-        printf("Intermediate result: %.*s\n", result_index, result);
-        index += 4;
+    //get the bin len
+    while (binary[bin_len] != '\0') {
+        bin_len++;
     }
 
-    result[result_index] = '\0';
-    return result;
+    //set aside mem for the hex string and null term
+    char *hexString = (char *) malloc(((bin_len + 3) / 4) + 1);
+    while (bitPosition < bin_len) {
+        currentHexDigit = 0;
+        for (int i = 0; i < 4; i++) {
+            currentHexDigit = (currentHexDigit << 1) | (binary[bitPosition++] - '0');
+        }
+
+        if (currentHexDigit < 10) {
+            hexString[index++] = currentHexDigit + '0';
+        } else {
+            hexString[index++] = currentHexDigit - 10 + 'A';
+        }
+    }
+    hexString[index] = '\0';
+    return hexString;
 }
+
+
+
 
 //Validates that the input binary is a valid UTF8 encoded binary. if valid returns 1 .
 //Valid if: 1 byte- 0???????
@@ -157,44 +74,43 @@ char* bin_to_hex_converter(const char* binary) {
 //          3 byte- 1110???? 10?????? 10??????
 //          4 byte- 11110??? 10?????? 10?????? 10??????
 int my_utf8_check(char *string) {
-    char bin_string[];
-    bin_string = hex_bin_converter(string);
+    char* bin_string = hex_bin_converter(string);
     int index = 0;
 
     //if the string ends in the middle of expected bit - not valid
-    if (string[index] == '\0' || string[index + 1] == '\0' || string[index + 2] == '\0' || string[index + 3] == '\0' ||
-        string[index + 4] == '\0' || string[index + 5] == '\0' || string[index + 6] == '\0' || string[index + 7] == '\0') {
+    if (bin_string[index] == '\0' || bin_string[index + 1] == '\0' || bin_string[index + 2] == '\0' || bin_string[index + 3] == '\0' ||
+            bin_string[index + 4] == '\0' || bin_string[index + 5] == '\0' || bin_string[index + 6] == '\0' || bin_string[index + 7] == '\0') {
         printf("Not valid UTF-8: invalid amount of bits\n");
         return 0;
     }
 
     //In order to check if the code is valid UTF8 it must follow the set patters according to the amount of bits
     //checking each of the possible bit combos and if the string always follows one of the four bit options then its valid
-    while (string[index] != '\0') {
+    while (bin_string[index] != '\0') {
         //1 byte
-        if (string[index] == '0'){
+        if (bin_string[index] == '0'){
             index += 8;
 
         }
             // 2 bytes
-        else if (string[index] == '1' && string[index + 1] == '1' && string[index + 2] == '0'
-                 && string[index + 8] == '1' && string[index + 9] == '0') {
+        else if (bin_string[index] == '1' && bin_string[index + 1] == '1' && bin_string[index + 2] == '0'
+                 && bin_string[index + 8] == '1' && bin_string[index + 9] == '0') {
             index += 16;
 
         }
             // 3 bytes
-        else if (string[index] == '1' && string[index + 1] == '1' && string[index + 2] == '1' && string[index + 3] == '0'
-                 && string[index + 8] == '1' && string[index + 9] == '0'
-                 && string[index + 16] == '1' && string[index + 17] == '0') {
+        else if (bin_string[index] == '1' && bin_string[index + 1] == '1' && bin_string[index + 2] == '1' && bin_string[index + 3] == '0'
+                 && bin_string[index + 8] == '1' && bin_string[index + 9] == '0'
+                 && bin_string[index + 16] == '1' && bin_string[index + 17] == '0') {
             index += 24;
 
         }
             //4 bytes
-        else if (string[index] == '1' && string[index + 1] == '1' && string[index + 2] == '1' && string[index + 3] == '1' &&
-                 string[index + 4] == '0'
-                 && string[index + 8] == '1' && string[index + 9] == '0'
-                 && string[index + 16] == '1' && string[index + 17] == '0'
-                 && string[index + 24] == '1' && string[index + 25] == '0') {
+        else if (bin_string[index] == '1' && bin_string[index + 1] == '1' && bin_string[index + 2] == '1' && bin_string[index + 3] == '1' &&
+                bin_string[index + 4] == '0'
+                 && bin_string[index + 8] == '1' && bin_string[index + 9] == '0'
+                 && bin_string[index + 16] == '1' && bin_string[index + 17] == '0'
+                 && bin_string[index + 24] == '1' && bin_string[index + 25] == '0') {
             index += 32;
 
         }
@@ -205,22 +121,22 @@ int my_utf8_check(char *string) {
         }
     }
 
-    printf("\nValid UTF-8 string yay!\n");
     return 1;
 }
 
 // Returns the number of characters in the string.
 int my_utf8_strlen(unsigned char *string) {
-    char *bin_string = hex_bin_converter((char*)string);
+    char *bin_string = hex_bin_converter((unsigned char*)string);
     int len = 0;
     int index = 0;
 
     if (my_utf8_check((char *)string)) {
-        while (*bin_string != '\0') {
+        while (bin_string[index] != '\0') {
 
             if (bin_string[index] == '0') {
                 index += 8;
                 len += 1;
+                printf("1 byte letter\n");\
 
             }
                 // 2 bytes
@@ -228,6 +144,8 @@ int my_utf8_strlen(unsigned char *string) {
                      && bin_string[index + 8] == '1' && bin_string[index + 9] == '0') {
                 index += 16;
                 len += 1;
+                printf("2 byte letter\n");
+
 
             }
                 // 3 bytes
@@ -237,25 +155,28 @@ int my_utf8_strlen(unsigned char *string) {
                      && bin_string[index + 16] == '1' && bin_string[index + 17] == '0') {
                 index += 24;
                 len += 1;
+                printf("3 byte letter\n");
 
             }
                 // 4 bytes
             else if (bin_string[index] == '1' && bin_string[index + 1] == '1' && bin_string[index + 2] == '1' &&
                     bin_string[index + 3] == '1' &&
-                     string[index + 4] == '0'
+                     bin_string[index + 4] == '0'
                      && bin_string[index + 8] == '1' && bin_string[index + 9] == '0'
                      && bin_string[index + 16] == '1' && bin_string[index + 17] == '0'
                      && bin_string[index + 24] == '1' && bin_string[index + 25] == '0') {
                 index += 32;
                 len += 1;
+                printf("4 byte letter\n");
 
             }
-
-            index++;
+            else{
+                break;
+            }
         }
 
         // Print the length of the UTF-8 string
-        printf("The length of the UTF-8 string is %d\n", len);
+        //printf("%d\n", len);
         return len;
     }
 
@@ -361,36 +282,127 @@ int my_utf8_decode(char *input, char *output) {
     }
     return 0;
 }
+//Returns the UTF8 encoded character at the location specified.
+//If the input string is improperly encoded, this function should return NULL to indicate an error.
+char *my_utf8_charat(unsigned char *string, int index) {
+    char *bin_string = hex_bin_converter((unsigned char *) string);
+    int char_index = 0;
+    int bin_index = 0;
+    int byte_amount = 0;
 
-int main (){
-    //char* letters = "hello world";
-    //char* originalCP = "\\u05D0\\u05DB\\u05D2"; //alef, bais, gimmel
-    //char* newstr = "\\u0418\\u0939\\u20AC"; //D0 98 E0 A4 B9 E2 82 AC
-    char utf8[] = "C2A324";
-    char input[] = "F2";
-    //int valid = my_utf8_check(binary);
+    if (my_utf8_check((char *) string)) {
+        while (bin_string[bin_index] != '\0') {
+            if (bin_string[bin_index] == '0') {
+                bin_index += 8;
+                char_index += 1;
+                byte_amount = 1;
+                if (char_index == index) {
+                    break;
+                }
+            }
+                // 2 bytes
+            else if (bin_string[bin_index] == '1' && bin_string[bin_index + 1] == '1' &&
+                     bin_string[bin_index + 2] == '0'
+                     && bin_string[bin_index + 8] == '1' && bin_string[bin_index + 9] == '0') {
+                bin_index += 16;
+                char_index += 1;
+                byte_amount = 2;
+                if (char_index == index) {
+                    break;
+                }
+            }
+                // 3 bytes
+            else if (bin_string[bin_index] == '1' && bin_string[bin_index + 1] == '1' &&
+                     bin_string[bin_index + 2] == '1' &&
+                     bin_string[bin_index + 3] == '0'
+                     && bin_string[bin_index + 8] == '1' && bin_string[bin_index + 9] == '0'
+                     && bin_string[bin_index + 16] == '1' && bin_string[bin_index + 17] == '0') {
+                bin_index += 24;
+                char_index += 1;
+                byte_amount = 3;
+                if (char_index == index) {
+                    break;
+                }
 
-    //check converter
-    char binary[];
-    binary = hex_bin_converter(utf8);
-    printf("\nhexBinConverter:\nhex input:%s\nbinary output:%s\n", utf8, binary);
+            }
+                // 4 bytes
+            else if (bin_string[bin_index] == '1' && bin_string[bin_index + 1] == '1' &&
+                     bin_string[bin_index + 2] == '1' &&
+                     bin_string[bin_index + 3] == '1' &&
+                     bin_string[bin_index + 4] == '0'
+                     && bin_string[bin_index + 8] == '1' && bin_string[bin_index + 9] == '0'
+                     && bin_string[bin_index + 16] == '1' && bin_string[bin_index + 17] == '0'
+                     && bin_string[bin_index + 24] == '1' && bin_string[bin_index + 25] == '0') {
+                bin_index += 32;
+                char_index += 1;
+                byte_amount = 4;
+                if (char_index == index) {
+                    break;
+                }
+            }
+        }
+
+        int length = 2 * byte_amount;
+        int start_index = bin_index - (8 * byte_amount);
+        int res_index = 0;
+        //allocate memory for the UTF-8 character and null
+        char *result = (char *) malloc(length + 1);
+
+        for (int i = start_index; i < bin_index; i++) {
+             ;
+            result[res_index++] = bin_string[i];
+        }
+
+        result[length] = '\0';
+
+        return binary_to_hex(result);
+
+
+    }
+    printf("Invalid UTF-8 string\n");
+    return NULL;
+}
+
+int main () {
+    char utf8[] = {0xD7, 0x90, 0xD7, 0xA8, 0xD7, 0x99, 0xD7, 0x94, 0xE0, 0xA4, 0xB9, };
+
+
+    //Test cconverter
+    char *binary = hex_bin_converter(utf8);
+    printf("\nHex to Binary Converter\nhex input: %s\nbinary output: %s\n", utf8, binary);
 
     //Test check function
-    printf("Check function: %d\n", my_utf8_check(utf8));
+    printf("\nCheck UTF-8 Function:\n");
+    if (my_utf8_check(utf8)) {
+        printf("Valid UTF-8 string\n");
+        // Your code for a valid UTF-8 string
+    } else {
+        printf("Invalid UTF-8 string\n");
+        // Your code for an invalid UTF-8 string
+    }
 
     //Test str length
+    printf("\nStrlen Function:\n");
     int strlen = my_utf8_strlen(utf8);
-    printf("Str length:\ninput:%s\noutput:%d\n", utf8, strlen);
+    if (strlen != -1) {
+        printf("String length: %d\n", strlen);
+    } else {
+        printf("Error in strlen\n");
+    }
+
+    //Test charat
+    printf("\ncharat function:\n");
+    int index = 2;
+    char *charc = my_utf8_charat(utf8, index);
+    printf("index: %d\nchar: %s", index, charc);
 
     //Test encode
-    char* output;
-    my_utf8_encode(newstr, output);
-    printf("Encode function:\ninput:%s\noutput:%s\n", newstr, output );
-
-    //Test decode
-    my_utf8_decode(newstr, output);
-    printf("decode function:\ninput:%s\noutput:%s\n", newstr, output );
-
-
-
+//    char* output;
+//    my_utf8_encode(newstr, output);
+//    printf("Encode function:\ninput:%s\noutput:%s\n", newstr, output );
+//
+//    //Test decode
+//    my_utf8_decode(newstr, output);
+//    printf("decode function:\ninput:%s\noutput:%s\n", newstr, output );
+//
 }
