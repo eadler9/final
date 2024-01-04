@@ -3,7 +3,7 @@
 #include <malloc.h>
 #include <stdlib.h>
 
-int my_utf8_strcmp(unsigned char *string1, unsigned char *string2);
+int my_utf8_strcmp();
 
 char* utf8_hex_bin_converter(const char* hex) {
     int binaryLength = 0;
@@ -44,6 +44,46 @@ void testall_hextobin() {
     test_hextobin(str2,  "11010111100100001101011110010010");
     test_hextobin(str4, "01101000");
 
+}
+char* unicode_hex_bin_converter(const char* hex) {
+    int binaryLength = 0;
+    while (hex[binaryLength] != '\0') {
+        binaryLength++;
+    }
+    binaryLength *= 4; // Each hex digit represents 4 binary digits
+
+    char* binaryString = (char*)malloc(binaryLength + 1); // +1 for the null terminator
+
+    int index = 0;
+    for (int i = 0; hex[i] != '\0'; i++) {
+        if (hex[i] == '\\' && hex[i + 1] == 'u') {
+            // Skip the '\\u' part
+            i += 2;
+
+            // Process the Unicode hexadecimal sequence
+            unsigned int codePoint = 0;
+            for (int j = 0; j < 4; j++) {
+                codePoint <<= 4;
+                char currentHexDigit = hex[i + j];
+                if (currentHexDigit >= '0' && currentHexDigit <= '9') {
+                    codePoint += currentHexDigit - '0';
+                } else if (currentHexDigit >= 'A' && currentHexDigit <= 'F') {
+                    codePoint += 10 + (currentHexDigit - 'A');
+                } else if (currentHexDigit >= 'a' && currentHexDigit <= 'f') {
+                    codePoint += 10 + (currentHexDigit - 'a');
+                }
+            }
+
+            // Convert the code point to binary
+            for (int j = 15; j >= 0; j--) {
+                binaryString[index++] = ((codePoint >> j) & 1) + '0';
+            }
+        }
+        // You can add additional logic here if needed
+    }
+    binaryString[index] = '\0';
+
+    return binaryString;
 }
 
 char* binary_to_hex(const char binary[]) {
@@ -400,22 +440,6 @@ void testall_charat() {
 }
 
 
-//my own function that concatanates two strings
-char *my_strcat(unsigned char *string1, unsigned char *string2) {
-    char *result;
-    int index1 = 0;
-    int index2 = 0;
-    int res_index = 0;
-    while (string1[index1] != '\0') {
-        result[res_index++] = string1[index1++];
-    }
-    while (string2[index2] != '\0') {
-        result[res_index++] = string2[index2++];
-    }
-    return result;
-}
-
-
 //check which byte patter in is and then chop of the added stuff at teh begiing of each byte
 // convert back to hex
 //returns a string, with ASCII representation where possible, and UTF8 character representation for non-ASCII characters.
@@ -423,52 +447,67 @@ int my_utf8_decode(char *input, char *output) {
     int utf8_index = 0;
     int codepoint_index = 0;
 
-    
+
     // Null-terminate the output string
     output[codepoint_index] = '\0';
 }
 
-
+int unicode_to_int(const char *input) {
+    int result = 0;
+    // skip \u
+    input += 2;
+    while (*input != '\0') {
+        int digit;
+        if (*input >= '0' && *input <= '9') {
+            digit = *input - '0';
+        } else if (*input >= 'A' && *input <= 'F') {
+            digit = *input - 'A' + 10;
+        } else {
+            return -1; // invalid
+        }
+        result = result * 16 + digit;
+        input++;
+    }
+    return result;
+}
 
 //Encoding a UTF8 binary, taking as input an ASCII binary, with UTF8 characters encoded using the “U+” notation, and returns a UTF8 encoded binary
 int my_utf8_encode(char *input, char *output){
-    char *bin =  utf8_hex_bin_converter(input);
-    if (input > 0 && (int) input <= 0x7F0){
+
+    int unicode_val = unicode_to_int(input);
+
+    if (unicode_val > 0 && unicode_val <= 0x7F){
         //1byte
-        output[0] = 0;
-        for(int i = 1; i <= 8; i++){
-            output[i] = bin[i-1];
-        }
-
-
+        printf("1 byte\n");
+        output[0] = (char)(unicode_val & 0x7F);
+        output[1] = '\0';
     }
-    else if ((int) input > 0x7F && (int) input <= 0x07FF){
+    else if (unicode_val> 0x7F && unicode_val <= 0x07FF){
         //2byte
-        output[0] = 1;
-        output[1] = 1;
-        output[2] = 0;
-        for(int i = 3; i <= 7; i++){
-            output[i] = bin[i-3];
-        }
-        output[8] = 1;
-        output[9] = 0;
-        for(int i = 10; i <= 15; i++) {
-            output[i] = bin[i - 5];
-        }
-        output[16] = 1;
-        output[17] = 0;
-        for(int i = 18; i <= 23; i++) {
-            output[i] = bin[i - 7];
-        }
-
+        printf("2 byte\n");
+        output[0] = (char)(((unicode_val >> 6) & 0x1F) | 0xC0);
+        output[1] = (char)((unicode_val & 0x3F) | 0x80);
+        output[2] = '\0';
     }
-    else if ((int) input > 0x800 && (int) input <= 0xFFFF){
+    else if (unicode_val > 0x800 && unicode_val <= 0xFFFF) {
         //3byte
-    }
-    else if ((int) input > 0x10000 && (int) input <= 0x10FFFF){
-        //4byte
+        printf("3 byte\n");
+        output[0] = (char)(((unicode_val >> 12) & 0x0F) | 0xE0);
+        output[1] = (char)(((unicode_val >> 6) & 0x3F) | 0x80);
+        output[2] = (char)((unicode_val & 0x3F) | 0x80);
+        output[3] = '\0';
     }
 
+    else if (unicode_val > 0x10000 && unicode_val<= 0x10FFFF){
+        //4byte
+        printf("4 byte\n");
+        output[0] = (char)(((unicode_val >> 18) & 0x07) | 0xF0);
+        output[1] = (char)(((unicode_val >> 12) & 0x3F) | 0x80);
+        output[2] = (char)(((unicode_val >> 6) & 0x3F) | 0x80);
+        output[3] = (char)((unicode_val & 0x3F) | 0x80);
+        output[4] = '\0';
+    }
+    return 0;
 }
 
 
@@ -478,18 +517,32 @@ int main() {
                             0x82, 0x0};
     unsigned char alefemoji[] = {0xD7, 0x90, 0x45, 0x0};
     unsigned char codepoint[] = {0x5C, 0x75, 0x30, 0x35, 0x44, 0x30, 0x5C, 0x75, 0x45, 0x0};
-    unsigned char *ucode = "\u0939\u0024\u00A3\n";
-    unsigned char uccode[] = {0x2F, 0x75, 0x30, 0x39, 0x33, 0x39, 0x2F, 0x75, 0x30, 0x30,0x32, 0x34, 0x2F, 0x75, 0x41, 0x33, 0x0};
+    unsigned char *ucode = "\\u0939\\u0024\\u00A3\n";
+    unsigned char *unicodeHex3 = "\\u0939";
+    unsigned char *unicodeHex = "\\u0039";
+    unsigned char *unicodeHex2 = "\\u05D1\0";
+    //unsigned char uccode[] = {0x2F, 0x75, 0x30, 0x39, 0x33, 0x39, 0x2F, 0x75, 0x30, 0x30,0x32, 0x34, 0x2F, 0x75, 0x41, 0x33, 0x0};
     printf("%s", ucode);
-    printf("%s", uccode);
+    //printf("%s", uccode);
+
+
+    int unicodeValue = unicode_to_int(unicodeHex);
+    if (unicodeValue >= 0x7FF) {
+        printf("%s is greater than or equal to 0x7FF\n", unicodeHex);
+    } else {
+        printf("%s is less than 0x7FF\n", unicodeHex);
+    }
 
     //Test hex to bin converter
     char *binary = utf8_hex_bin_converter(alefemoji);
     printf("\nHex to Binary Converter\nhex input: %s\nbinary output: %s\n", alefemoji, binary);
 
+    //char *binary2 = unicode_hex_bin_converter(ucode);
+    //printf("\nUnicode to Binary Converter\nhex input: %sbinary output: %s\n", ucode, binary2);
+
     //test bin to hex
-    char *hex = binary_to_hex(binary);
-    printf("\nBinary to hex Converter\nbinary input: %s\nbinary output: %s\n", binary, hex);
+    //char *hex = binary_to_hex(binary);
+   // printf("\nBinary to hex Converter\nbinary input: %s\nbinary output: %s\n", binary, hex);
 
     //byte checker
     int *result = byte_checker(utf8);
@@ -526,11 +579,12 @@ int main() {
     //Test encode
     printf("\nEncoder:\n");
     char output[40];
-    my_utf8_encode(codepoint, output);
+    my_utf8_encode(unicodeHex3, output);
+    printf("Encoded: %s", output);
 
 
     //Test decode
-    printf("\nDecoder:\nInput: %s\nOutput: ", alefemoji);
-    //if (my_utf8_decode(alefemoji, output) == 0) {
-    printf("%s", output);
+//    printf("\nDecoder:\nInput: %s\nOutput: ", alefemoji);
+//    //if (my_utf8_decode(alefemoji, output) == 0) {
+//    printf("%s", output);
 }
