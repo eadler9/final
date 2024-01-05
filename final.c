@@ -7,22 +7,26 @@ int my_utf8_strcmp();
 int my_utf8_check();
 
 char* utf8_hex_bin_converter(const char* hex) {
+    //get the length of the final string (for allocate mem)
     int binaryLength = 0;
         while (hex[binaryLength] != 0x0) {
             binaryLength++;
         }
         binaryLength *= 8;
 
+        //allocate memory
         char *binaryString = (char *) malloc(binaryLength + 1); // +1 for the null terminator
 
 
         int index = 0;
+        //until the end of the string
         for (int i = 0; hex[i] != 0x0; i++) {
+            //for each hex char get its bits starting from right and shift and then convert to ascii
             for (int j = 7; j >= 0; j--) {
                 binaryString[index++] = ((hex[i] >> j) & 1) + '0';
             }
-            //binaryString[index++] = ' ';
         }
+        //add a null terminator
         binaryString[index] = '\0';
 
         return binaryString;
@@ -145,7 +149,7 @@ int my_utf8_check(char *string) {
     }
 
     //In order to check if the code is valid UTF8 it must follow the set patters according to the amount of bits
-    //checking each of the possible bit combos and if the string always follows one of the four bit options then its valid
+    //checking each of the possible bit combos and if the string always follows one of the four bit options then its valid (as seen above)
     while (bin_string[index] != '\0') {
         //1 byte
         if (bin_string[index] == '0'){
@@ -216,10 +220,14 @@ void testall_check() {
 
 // Returns the number of characters in the string.
 int my_utf8_strlen(unsigned char *string) {
+    //turn the string to binary
     char *bin_string = utf8_hex_bin_converter((unsigned char*)string);
     int len = 0;
     int index = 0;
+    //if the string is valid
     if (my_utf8_check((char *)string) == 0) {
+        //until the end of the string we move char by char by figuring out how many bytes the char is and then indexing by that amount
+        //each time we find one char(with 1-4 bytes) we add to the len counter
         while (bin_string[index] != '\0') {
             if (bin_string[index] == '0') {
                 index += 8;
@@ -249,15 +257,15 @@ int my_utf8_strlen(unsigned char *string) {
                 index += 32;
                 len += 1;
             }
+            //if its anything other that one of the four valid bytes combos than exit
             else{
                 break;
             }
         }
-        // Print the length of the UTF-8 string
-        //printf("%d\n", len);
+
         return len;
     }
-    // Handle the case where the UTF-8 string is invaidג
+    // when the utf8 is not valid
     return -1;
 }
 int test_strlen(unsigned char *string, int expected){
@@ -304,8 +312,10 @@ void testall_strlen() {
 int my_utf8_strcmp(unsigned char *string1, unsigned char *string2) {
     int index = 0;
     int result = 0;
+    //convert both to binary
     char *stringA = utf8_hex_bin_converter((unsigned char *) string1);
     char *stringB = utf8_hex_bin_converter((unsigned char *) string2);
+    // until the end go bit by bit and comapre- if they are the same then they are a match!
     while (stringA[index] != 0x0) {
         if (stringA[index] == stringB[index]) {
             result = 0;
@@ -333,48 +343,64 @@ void testall_strcmp() {
                             0x82,0x0};
     unsigned char str5[] = {0xD7, 0x90, 0xD7, 0xA8, 0xD7, 0x99, 0xD7, 0x94, 0xE0, 0xA4, 0xB9, 0xF0, 0x9F, 0x98,
                             0x82,0x0};
+    unsigned char *str6 = "hello";
+    unsigned char *str7 = "hello";
+    unsigned char *str8 = "hell";
+    unsigned char *str9 = "";
+    unsigned char *str10 = "";
+
     test_strcmp(str1,str2,1);
     test_strcmp(str1,str3,0);
     test_strcmp(str2,str4,1);
     test_strcmp(str4,str5,0);
+    test_strcmp(str6,str7,0);
+    test_strcmp(str6,str8,1);
+    test_strcmp(str9,str10,0);
 
 }
 
 //Returns the UTF8 encoded character at the location specified.
 //If the input string is improperly encoded, this function should return NULL to indicate an error.
 char *my_utf8_charat(unsigned char *string, int index) {
-    char *bin_string = utf8_hex_bin_converter(string);
+    //get the byte count of eahc char in the string
     int *byte_counter = byte_checker(string);
+    //index for the string
     int str_index = 0;
+    //index to keep track of which charchter's byte count we are up to
     int char_index = 0;
 
-    if (my_utf8_check((char *)string) == 0) {
-        while (string[str_index] != 0x0) {
-            if (byte_counter[char_index] == -1) {
-                break; // end of the byte checker
-            }
-            if (index == 0) {
-                // Extract the UTF-8 character
-                int res_index;
-                char *result = (char *) malloc((byte_counter[char_index] + 1) * sizeof(char));
-                for (res_index = 0; res_index < byte_counter[char_index]; res_index++) {
-                    result[res_index] = string[str_index + res_index];
-                }
-                result[res_index] = '\0'; // Null-terminate the string
-                return result;
+    //if not valid utf8 return NULL to indicate error
+    if (my_utf8_check((char *) string) != 0) {
+        return NULL;
+    }
 
-
-            }
-
-            str_index += byte_counter[char_index];
-            char_index++;
-            index--;
+    //until the end of the string
+    while (string[str_index] != 0x0) {
+        if (byte_counter[char_index] == -1) {
+            break; // end of the byte checker
         }
 
-    }
-    return NULL;
-}
+        //if the index is zero we want that char (we traversed the string until we got to it)
+        if (index == 0) {
+            // Extract the UTF-8 character
+            int res_index;
+            //allocate mem for the result str
+            char *result = (char *) malloc((byte_counter[char_index] + 1) * sizeof(char));
+            //since we are at the desired letter - take its bytes and add them to the result str
+            for (res_index = 0; res_index < byte_counter[char_index]; res_index++) {
+                result[res_index] = string[str_index + res_index];
+            }
+            // add a null terminator to the string
+            result[res_index] = '\0';
+            return result;
 
+        }
+        // index all the necassary index's (for the string and the bytes) for next char (not at the desired index yet)
+        str_index += byte_counter[char_index];
+        char_index++;
+        index--;
+    }
+}
 
 
 int test_charat(unsigned char *string, int index, unsigned char *expected) {
@@ -391,30 +417,26 @@ int test_charat(unsigned char *string, int index, unsigned char *expected) {
 void testall_charat() {
     unsigned char str1[] = {0xD7, 0x90, 0xD7, 0xA8, 0xD7, 0x99, 0xD7, 0x94, 0xE0, 0xA4, 0xB9, 0xF0, 0x9F, 0x98,
                             0x82,0x0};
-    unsigned char str2[] = {0xD7, 0x90, 0xD7, 0x92, 0x0};
-    unsigned char str3[] = {0xD7, 0x9,  0x0};
     unsigned char *str4 = "hello";
     unsigned char str5[] = {0xCF, 0xA3, 0x45, 0x4C, 0x41, 0x4E,0x41,0xF0, 0x9F, 0x98,
                             0x90, 0x0};
     unsigned char str6[] = {0xF0, 0x9F, 0x98, 0x90,0xF0, 0x9F, 0x98, 0x95,0xF0, 0x9F, 0x98, 0x97, 0x0};
     unsigned char str7[] = {0x0};
 
-
     test_charat(str1, 0,"\xD7\x90");
     test_charat(str1, 5, "\xF0\x9F\x98\x82");
     test_charat(str4,1, "\x65");
     test_charat(str7,2, "");
     test_charat(str5,10, "");
-    test_charat(str6,2, "\x1F\x61\x17");
+    test_charat(str6,2, "\xF0\x9F\x98\x97");
 
-    //test_charat(str3, 0, NULL);
 }
 
 
 //check which byte patter in is and then chop of the added stuff at teh begging of each byte
-// convert back to hex
 //returns a string, with ASCII representation where possible, and UTF8 character representation for non-ASCII characters.
 int my_utf8_decode(char *input, char *output) {
+    //get the amount of bytes of each char
     int *byte_arr = byte_checker(input);
     int index = 0;
     int arr_index = 0;
@@ -423,6 +445,7 @@ int my_utf8_decode(char *input, char *output) {
     if(my_utf8_check(input) == 0) {
         while (input[index] != '\0') {
             int bytes = byte_arr[arr_index];
+
             int codepoint = 0;
             if (bytes == 1) {
                 codepoint = input[index];
@@ -547,16 +570,6 @@ int main() {
     unsigned char *ucode = "\\u0939\\u0024\\u00A3\n";
     unsigned char *unicodeHex3 = "\\u0939";
 
-    //byte checker
-    int *result = byte_checker(utf8);
-    printf("\nByte checker\n");
-    for (int i = 0; result[i] != -1; i++) {
-        printf("Character %d: %d bytes\n", i + 1, result[i]);
-    }
-
-    //test byte checker
-    printf("\nByte checker\n");
-    testall_byte_checker();
 
     //Test str length
     printf("\nStrlen Function:\n");
@@ -578,11 +591,23 @@ int main() {
     printf("\nstrcmp function:\n");
     testall_strcmp();
 
+    //byte checker
+    int *result = byte_checker(utf8);
+    printf("\nByte checker\n");
+    for (int i = 0; result[i] != -1; i++) {
+        printf("Character %d: %d bytes\n", i + 1, result[i]);
+    }
+
+    //test byte checker
+    printf("\nByte checker\n");
+    testall_byte_checker();
+
+
     //test decode
     printf("\ndecode function:\n");
     testall_decode();
 
-
+    
     //Test encode
     printf("\nEncoder:\n");
     char output[40];
