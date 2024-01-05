@@ -45,74 +45,6 @@ void testall_hextobin() {
     test_hextobin(str4, "01101000");
 
 }
-char* unicode_hex_bin_converter(const char* hex) {
-    int binaryLength = 0;
-    while (hex[binaryLength] != '\0') {
-        binaryLength++;
-    }
-    binaryLength *= 4; // Each hex digit represents 4 binary digits
-
-    char* binaryString = (char*)malloc(binaryLength + 1); // +1 for the null terminator
-
-    int index = 0;
-    for (int i = 0; hex[i] != '\0'; i++) {
-        if (hex[i] == '\\' && hex[i + 1] == 'u') {
-            // Skip the '\\u' part
-            i += 2;
-
-            // Process the Unicode hexadecimal sequence
-            unsigned int codePoint = 0;
-            for (int j = 0; j < 4; j++) {
-                codePoint <<= 4;
-                char currentHexDigit = hex[i + j];
-                if (currentHexDigit >= '0' && currentHexDigit <= '9') {
-                    codePoint += currentHexDigit - '0';
-                } else if (currentHexDigit >= 'A' && currentHexDigit <= 'F') {
-                    codePoint += 10 + (currentHexDigit - 'A');
-                } else if (currentHexDigit >= 'a' && currentHexDigit <= 'f') {
-                    codePoint += 10 + (currentHexDigit - 'a');
-                }
-            }
-
-            // Convert the code point to binary
-            for (int j = 15; j >= 0; j--) {
-                binaryString[index++] = ((codePoint >> j) & 1) + '0';
-            }
-        }
-        // You can add additional logic here if needed
-    }
-    binaryString[index] = '\0';
-
-    return binaryString;
-}
-
-char* binary_to_hex(const char binary[]) {
-    int bin_len = 0;
-    int index = 0;
-    int currentHexDigit = 0;
-    int bitPosition = 0;
-
-    //get the bin len
-    while (binary[bin_len] != '\0') {
-        bin_len++;
-    }
-
-    //set aside mem for the hex string and null term
-    char *hexString = (char *) malloc(((bin_len + 3) / 4) + 1);
-    while (bitPosition < bin_len) {
-        currentHexDigit = 0;
-        for (int i = 0; i < 4; i++) {
-            currentHexDigit = (currentHexDigit << 1) | (binary[bitPosition++] - '0');
-        }
-        if (currentHexDigit < 10) {
-            hexString[index++] = currentHexDigit + '0';
-        } else {
-            hexString[index++] = currentHexDigit - 10 + 'A';
-        }
-    }
-    hexString[index] = 0x0;
-    return hexString;
-}
 
 int* byte_checker(unsigned char *string) {
     char *bin_string = utf8_hex_bin_converter(string);
@@ -434,22 +366,70 @@ void testall_charat() {
 
     test_charat(str1, 0,"\xD7\x90");
     test_charat(str1, 5, "\xF0\x9F\x98\x82");
-
     test_charat(str4,1, "\x65");
     //test_charat(str3, 0, NULL);
 }
 
 
-//check which byte patter in is and then chop of the added stuff at teh begiing of each byte
+//check which byte patter in is and then chop of the added stuff at teh begging of each byte
 // convert back to hex
 //returns a string, with ASCII representation where possible, and UTF8 character representation for non-ASCII characters.
 int my_utf8_decode(char *input, char *output) {
-    int utf8_index = 0;
-    int codepoint_index = 0;
+    int *byte_arr = byte_checker(input);
+    int index = 0;
+    int arr_index = 0;
+    int decoded_index = 0;
 
+    if(my_utf8_check(input) == 0) {
+        while (input[index] != '\0') {
+            int bytes = byte_arr[arr_index];
+            //anding the first byte with a bit mask that is the takes of the first x bits (ex: 0001111) to mask off however many extra utf8 bits
+            int codepoint = input[index] & (0xFF >> (bytes + 1));
+            //for each additional byte (already did the first byte)
+            for (int i = 1; i < bytes; i++) {
+                //first shift codepoint do add room for the next bits
+                // then we and the new byte with to just get the last 6 bits (first 2 are 10-conitue bits which we dont need)
+                codepoint = (codepoint << 6) | (input[index + i] & 0x3F);
+            }
+            // now add in the \u's and make sure 4-5 places
+            sprintf(output + decoded_index, "\\u%04X", codepoint);
 
-    // Null-terminate the output string
-    output[codepoint_index] = '\0';
+            // get next utf8 and amount of bytes
+            index += bytes;
+            arr_index++;
+            decoded_index += my_utf8_strlen(output + decoded_index);
+
+        }
+        free(byte_arr);
+        return 0;
+    }
+    return 1;
+}
+
+int test_decode(unsigned char *input, unsigned char *output, unsigned char *expected) {
+    int valid = my_utf8_decode(input, output);
+    if (valid != 1) {
+        printf("%s, input: %s, output: %s, Expected output: %s\n",
+               (my_utf8_strcmp(expected, output) == 0 ? "PASSED" : "FAILED"), input, output, expected);
+
+    }
+    else {
+        printf("ERROR:INVALID UTF-8, String: %s\n", input);
+    }
+}
+
+void testall_decode() {
+    unsigned char str1[] = {0xD7, 0x90, 0xD7, 0xA8, 0xD7, 0x99, 0xD7, 0x94, 0xE0, 0xA4, 0xB9, 0xF0, 0x9F, 0x98,
+                            0x82,0x0};
+    unsigned char str2[] = {0xD7, 0x90, 0xD7, 0x92, 0x0};
+    unsigned char str3[] = {0xD7, 0x9,  0x0};
+    unsigned char *str4 = "hello";
+    char output[40] ;
+
+    test_decode(str1, output,"\\u05D0\\u05E8\\u05D9\\u05D4\\u0939\\u1F602");
+    test_decode(str1, output, "\xF0\x9F\x98\x82");
+    test_decode(str4,output, "hello");
+
 }
 
 int unicode_to_int(const char *input) {
@@ -521,28 +501,7 @@ int main() {
     unsigned char *unicodeHex3 = "\\u0939";
     unsigned char *unicodeHex = "\\u0039";
     unsigned char *unicodeHex2 = "\\u05D1\0";
-    //unsigned char uccode[] = {0x2F, 0x75, 0x30, 0x39, 0x33, 0x39, 0x2F, 0x75, 0x30, 0x30,0x32, 0x34, 0x2F, 0x75, 0x41, 0x33, 0x0};
-    printf("%s", ucode);
-    //printf("%s", uccode);
-
-
-    int unicodeValue = unicode_to_int(unicodeHex);
-    if (unicodeValue >= 0x7FF) {
-        printf("%s is greater than or equal to 0x7FF\n", unicodeHex);
-    } else {
-        printf("%s is less than 0x7FF\n", unicodeHex);
-    }
-
-    //Test hex to bin converter
-    char *binary = utf8_hex_bin_converter(alefemoji);
-    printf("\nHex to Binary Converter\nhex input: %s\nbinary output: %s\n", alefemoji, binary);
-
-    //char *binary2 = unicode_hex_bin_converter(ucode);
-    //printf("\nUnicode to Binary Converter\nhex input: %sbinary output: %s\n", ucode, binary2);
-
-    //test bin to hex
-    //char *hex = binary_to_hex(binary);
-   // printf("\nBinary to hex Converter\nbinary input: %s\nbinary output: %s\n", binary, hex);
+    
 
     //byte checker
     int *result = byte_checker(utf8);
@@ -575,16 +534,15 @@ int main() {
     printf("\nstrcmp function:\n");
     testall_strcmp();
 
+    //test decode
+    printf("\ndecode function:\n");
+    testall_decode();
+
 
     //Test encode
     printf("\nEncoder:\n");
     char output[40];
     my_utf8_encode(unicodeHex3, output);
-    printf("Encoded: %s", output);
+    printf("Encoded: %s\n", output);
 
-
-    //Test decode
-//    printf("\nDecoder:\nInput: %s\nOutput: ", alefemoji);
-//    //if (my_utf8_decode(alefemoji, output) == 0) {
-//    printf("%s", output);
 }
