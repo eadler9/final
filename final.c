@@ -488,8 +488,8 @@ int my_utf8_decode(char *input, char *output) {
 
             int codepoint = 0;
             if (bytes == 1) {
-                codepoint = input[index];
-                //sprintf(output + decoded_index, "\\u%s", codepoint);
+                output[decoded_index++] = input[index];
+
             } else {
                 //anding the first byte with a bit mask that is the takes of the first x bits (ex: 0001111) to mask off however many extra utf8 bits
                 codepoint = input[index] & (0xFF >> (bytes + 1));
@@ -499,17 +499,15 @@ int my_utf8_decode(char *input, char *output) {
                     // then we and the new byte with to just get the last 6 bits (first 2 are 10-conitue bits which we dont need)
                     codepoint = (codepoint << 6) | (input[index + i] & 0x3F);
                 }
+                // now where in the decode str we are up to add in the \u's and make sure 4-5 places
+                decoded_index += sprintf(output + decoded_index, "\\u%04X", codepoint);
             }
-            // now add in the \u's and make sure 4-5 places
-            sprintf(output + decoded_index, "\\u%04X", codepoint);
 
             // get next utf8 and amount of bytes
             index += bytes;
             arr_index++;
-            decoded_index += my_utf8_strlen(output + decoded_index);
+            }
 
-        }
-        free(byte_arr);
         return 0;
     }
     return 1;
@@ -532,8 +530,9 @@ void testall_decode() {
     unsigned char str1[] = {0xD7, 0x90, 0xD7, 0xA8, 0xD7, 0x99, 0xD7, 0x94, 0xE0, 0xA4, 0xB9, 0xF0, 0x9F, 0x98,
                             0x82,0x0};
     unsigned char str2[] = {0xD7, 0x90, 0xD7, 0x92, 0x0};
-    unsigned char str3[] = {0xD7, 0x9,  0x0};
-    unsigned char *str4 = "hello";
+    unsigned char str3[] = {0x45, 0xF0, 0x9F, 0x98,
+                            0x82, 0X47, 0x0};
+    unsigned char *str4 = "hello\0";
 
     unsigned char str6[] = {0xF0, 0x9F, 0x98, 0x90,0xF0, 0x9F, 0x98, 0x95,0xF0, 0x9F, 0x98, 0x97, 0x0};
 
@@ -541,11 +540,10 @@ void testall_decode() {
 
     test_decode(str1, output,"\\u05D0\\u05E8\\u05D9\\u05D4\\u0939\\u1F602\0");
     test_decode(str2, output, "\\u05D0\\u05D2\0");
+    test_decode(str4, output, "hello");
+
     test_decode(str6, output, "\\u1F610\\u1F615\\u1F617\0");
 
-    //test_decode(str8, output, "\\u05D0\\u05D2");
-    //test_decode(str4,output, "hello");
-    //test_decode(str3,output, "");
 
 
 }
@@ -577,7 +575,9 @@ int my_utf8_encode(unsigned char *input, unsigned char *output){
                 else if (input[index] >= 'A' && input[index] <= 'F') {
                     numb = input[index] - 'A' + 10;
                 }
-
+                else {
+                return 1; // Invalid character in Unicode sequence
+                }
                 //shift bits to get next one
                 unicode_val = (unicode_val << 4) | numb;
                 index++;
@@ -623,7 +623,6 @@ int my_utf8_encode(unsigned char *input, unsigned char *output){
 
 int test_encode(unsigned char *input, unsigned char *output, unsigned char *expected) {
     int valid = my_utf8_encode(input, output);
-    //returns 1 if check function says its not valid utf8
     if (valid != 1) {
         printf("%s, input: %s, output: %s, Expected output: %s\n", (my_utf8_strcmp(expected, output) == 0 ? "PASSED" : "FAILED"), input, output, expected);
 
@@ -642,13 +641,12 @@ void testall_encode() {
     unsigned char *str6 = "\\u0045\\u0046\\u0047";
     unsigned char *str7 = "\\u0045\\u1F602\\u0047";
 
+
     unsigned char out3[] = {0xF0, 0x9F, 0x98, 0x90,0xF0, 0x9F, 0x98, 0x95,0xF0, 0x9F, 0x98, 0x97, 0x0};
     unsigned char out4[] = {0xD7, 0x90, 0xD7, 0xA8, 0xD7, 0x99, 0xD7, 0x94, 0xE0, 0xA4, 0xB9, 0xF0, 0x9F, 0x98,
                             0x82,0x0};
     unsigned char out5[] = {0x45, 0xF0, 0x9F, 0x98,
                             0x82, 0X47, 0x0};
-
-
 
     char output[40] ;
 
@@ -659,6 +657,7 @@ void testall_encode() {
     test_encode(str5, output, "");
     test_encode(str6, output, "EFG");
     test_encode(str7, output, out5);
+
 
 
 
