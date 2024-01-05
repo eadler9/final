@@ -534,92 +534,98 @@ void testall_decode() {
     unsigned char str2[] = {0xD7, 0x90, 0xD7, 0x92, 0x0};
     unsigned char str3[] = {0xD7, 0x9,  0x0};
     unsigned char *str4 = "hello";
-    unsigned char str5[] = {0xCF, 0xA3, 0x45, 0x4C, 0x41, 0x4E,0x41,0xF0, 0x9F, 0x98,
-                            0x90, 0x0};
+
     unsigned char str6[] = {0xF0, 0x9F, 0x98, 0x90,0xF0, 0x9F, 0x98, 0x95,0xF0, 0x9F, 0x98, 0x97, 0x0};
-    unsigned char str7[] = {0x0};
-    unsigned char str8[] = {0xCF, 0x3, 0x45, 0x4C, 0x41, 0x4E,0x41,0xF0, 0x9F, 0x98,
-                            0x90, 0x0};
+
     char output[40] ;
 
     test_decode(str1, output,"\\u05D0\\u05E8\\u05D9\\u05D4\\u0939\\u1F602\0");
     test_decode(str2, output, "\\u05D0\\u05D2\0");
     test_decode(str6, output, "\\u1F610\\u1F615\\u1F617\0");
-    //test_decode(str7, output, "");
+
     //test_decode(str8, output, "\\u05D0\\u05D2");
     //test_decode(str4,output, "hello");
     //test_decode(str3,output, "");
-    //test_decode(str5, output, "\\u05D0\\u05D2");
 
-}
 
-int unicode_to_int(const char *input) {
-    int result = 0;
-    // skip \u
-    input += 2;
-    while (*input != '\0') {
-        int digit;
-        if (*input >= '0' && *input <= '9') {
-            digit = *input - '0';
-        } else if (*input >= 'A' && *input <= 'F') {
-            digit = *input - 'A' + 10;
-        } else {
-            return -1; // invalid
-        }
-        result = result * 16 + digit;
-        input++;
-    }
-    return result;
 }
 
 //Encoding a UTF8 binary, taking as input an ASCII binary, with UTF8 characters encoded using the “U+” notation, and returns a UTF8 encoded binary
-int my_utf8_encode(char *input, char *output){
-    //send it to a fucntion to turn the char into ints so i can comapre value
-    int unicode_val = unicode_to_int(input);
+int my_utf8_encode(unsigned char *input, unsigned char *output){
+    int index = 0;
+    int output_index = 0;
 
-    //the range of value that the unicode falls in determines the amount of bytes
-    //based on the byte range that it falls in add the relevnt bits to have it reprented in utf8
-    if (unicode_val > 0 && unicode_val <= 0x7F){
-        //1byte
-        printf("1 byte\n");
-        //if its one byte
-        output[0] = (char)(unicode_val & 0x7F);
-        output[1] = '\0';
-    }
-    else if (unicode_val> 0x7F && unicode_val <= 0x07FF){
-        //2byte
-        printf("2 byte\n");
-        output[0] = (char)(((unicode_val >> 6) & 0x1F) | 0xC0);
-        output[1] = (char)((unicode_val & 0x3F) | 0x80);
-        output[2] = '\0';
-    }
-    else if (unicode_val > 0x800 && unicode_val <= 0xFFFF) {
-        //3byte
-        printf("3 byte\n");
-        output[0] = (char)(((unicode_val >> 12) & 0x0F) | 0xE0);
-        output[1] = (char)(((unicode_val >> 6) & 0x3F) | 0x80);
-        output[2] = (char)((unicode_val & 0x3F) | 0x80);
-        output[3] = '\0';
+    while (input[index] != '\0') {
+        //skip over the \u
+        if (input[index] == '\\' && input[index + 1] == 'u') {
+            index += 2;
+
+            //have the get the input chars as values so we can comapre them
+            int unicode_val = 0;
+            //
+            while ((input[index] >= '0' && input[index] <= '9') || (input[index] >= 'A' && input[index] <= 'F')) {
+                int numb;
+                //coverting the hex chars to digits by subracting the ascii
+
+                //if its a number char of hex subract the ascii value of 0 to get its int value
+                if (input[index] >= '0' && input[index] <= '9') {
+                    numb = input[index] - '0';
+
+                    //if its a letter char of hex subract the ascii value of A to get its int value
+                    //then add 10 to make it eqv val to the hex eqv
+                }
+                else if (input[index] >= 'A' && input[index] <= 'F') {
+                    numb = input[index] - 'A' + 10;
+                }
+
+                //shift bits to get next one
+                unicode_val = (unicode_val << 4) | numb;
+                index++;
+            }
+
+            //the range of value that the unicode falls in determines the amount of bytes
+            //based on the byte range that it falls in add the relevent bits to have it represented in utf8
+            if (unicode_val > 0 && unicode_val <= 0x7F) {
+                //1 byte
+                output[output_index++] = (unsigned char)(unicode_val & 0x7F);
+            } else if (unicode_val > 0x7F && unicode_val <= 0x07FF) {
+                //2bytes
+                //ad in 110
+                output[output_index++] = (unsigned char)(((unicode_val >> 6) & 0x1F) | 0xC0);
+                //add in 10
+                output[output_index++] = (unsigned char)((unicode_val & 0x3F) | 0x80);
+            } else if (unicode_val > 0x800 && unicode_val <= 0xFFFF) {
+                //3bytes
+                //add in 1110
+                output[output_index++] = (unsigned char)(((unicode_val >> 12) & 0x0F) | 0xE0);
+                //add in 10
+                output[output_index++] = (unsigned char)(((unicode_val >> 6) & 0x3F) | 0x80);
+                //add in 10
+                output[output_index++] = (unsigned char)((unicode_val & 0x3F) | 0x80);
+            } else if (unicode_val > 0x10000 && unicode_val <= 0x10FFFF) {
+                //4 bytes
+                //add in 11110
+                output[output_index++] = (unsigned char)(((unicode_val >> 18) & 0x07) | 0xF0);
+                //add in 10
+                output[output_index++] = (unsigned char)(((unicode_val >> 12) & 0x3F) | 0x80);
+                //add in 10
+                output[output_index++] = (unsigned char)(((unicode_val >> 6) & 0x3F) | 0x80);
+                //add in 10
+                output[output_index++] = (unsigned char)((unicode_val & 0x3F) | 0x80);
+            }
+        }
     }
 
-    else if (unicode_val > 0x10000 && unicode_val<= 0x10FFFF){
-        //4byte
-        printf("4 byte\n");
-        output[0] = (char)(((unicode_val >> 18) & 0x07) | 0xF0);
-        output[1] = (char)(((unicode_val >> 12) & 0x3F) | 0x80);
-        output[2] = (char)(((unicode_val >> 6) & 0x3F) | 0x80);
-        output[3] = (char)((unicode_val & 0x3F) | 0x80);
-        output[4] = '\0';
-    }
-    return 0;
+    // end off the string with a null term
+    output[output_index] = '\0';
+    return 0; //code worked return 0
 }
 
 int test_encode(unsigned char *input, unsigned char *output, unsigned char *expected) {
     int valid = my_utf8_encode(input, output);
     //returns 1 if check function says its not valid utf8
     if (valid != 1) {
-        printf("%s, input: %s, output: %s, Expected output: %s\n",
-               (my_utf8_strcmp(expected, output) == 0 ? "PASSED" : "FAILED"), input, output, expected);
+        printf("%s, input: %s, output: %s, Expected output: %s\n", (my_utf8_strcmp(expected, output) == 0 ? "PASSED" : "FAILED"), input, output, expected);
 
     }
     else {
@@ -631,12 +637,29 @@ void testall_encode() {
     unsigned char *str1 = "\\u05D0";
     unsigned char *str2 = "\\u05D0\\u05D2\0";
     unsigned char *str3 ="\\u1F610\\u1F615\\u1F617\0";
+    unsigned char *str4 = "\\u05D0\\u05E8\\u05D9\\u05D4\\u0939\\u1F602";
+    unsigned char *str5 = "";
+    unsigned char *str6 = "\\u0045\\u0046\\u0047";
+    unsigned char *str7 = "\\u0045\\u1F602\\u0047";
+
+    unsigned char out3[] = {0xF0, 0x9F, 0x98, 0x90,0xF0, 0x9F, 0x98, 0x95,0xF0, 0x9F, 0x98, 0x97, 0x0};
+    unsigned char out4[] = {0xD7, 0x90, 0xD7, 0xA8, 0xD7, 0x99, 0xD7, 0x94, 0xE0, 0xA4, 0xB9, 0xF0, 0x9F, 0x98,
+                            0x82,0x0};
+    unsigned char out5[] = {0x45, 0xF0, 0x9F, 0x98,
+                            0x82, 0X47, 0x0};
+
+
 
     char output[40] ;
 
     test_encode(str1, output,"א");
-    test_encode(str2, output, "\\u05D0\\u05D2\0");
-    test_encode(str3, output, "\\u1F610\\u1F615\\u1F617\0");
+    test_encode(str2, output, "אג");
+    test_encode(str3, output, out3);
+    test_encode(str4, output, out4);
+    test_encode(str5, output, "");
+    test_encode(str6, output, "EFG");
+    test_encode(str7, output, out5);
+
 
 
 }
@@ -644,38 +667,38 @@ void testall_encode() {
 int main() {
 
     //Test str length
-    printf("\nStrlen Function:\n");
+    printf("\nStrlen Function:(returns the number of chars in a utf8 string)\n");
     testall_strlen();
 
     //test UTF 8 hex to bin
-    printf("\nUTF-8 String (hex) to binary Function:\n");
+    printf("\nUTF-8 String (hex) to binary Function:(converts a utf8 sting into binary)\n");
     testall_hextobin();
 
     //Test check function
-    printf("\nCheck UTF-8 Function:\n");
+    printf("\nCheck UTF-8 Function:(checks to see if string is valid utf8)\n");
     testall_check();
 
     //test charat
-    printf("\ncharat function:\n");
+    printf("\ncharat function:(returns utf8 char at the specified index)\n");
     testall_charat();
 
     //test strcmp
-    printf("\nstrcmp function:\n");
+    printf("\nstrcmp function:(compares 2 utf8 strings to see if they are the same)\n");
     testall_strcmp();
 
 
     //test byte checker
-    printf("\nByte checker\n");
+    printf("\nByte checker: (returns the sequence of byte amount its chars of given string)\n");
     testall_byte_checker();
 
 
     //test decode
-    printf("\ndecode function:\n");
+    printf("\ndecode function:(decodes from utf8 to codepoint)\n");
     testall_decode();
 
 
     //Test encode
-    printf("\nencoder function:\n");
+    printf("\nencoder function:(encodes from codepoint to utf8)\n");
     testall_encode();
 
 }
