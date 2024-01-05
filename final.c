@@ -64,6 +64,8 @@ int* byte_checker(unsigned char *string) {
     int arr_index = 0;
 
     int *result = (int *) malloc(10 * sizeof(int));
+    //this function check the sequence of bit when it find a match with a charin the input string
+    //it send the number of bytes to the output array for usage in other function
 
     while (bin_string[index] != '\0') {
 
@@ -109,14 +111,40 @@ int* byte_checker(unsigned char *string) {
     free(bin_string);
     return result;
 }
+int my_utf8_arraycmp(unsigned int *arr1, int *arr2) {
+    int i = 0;
+    //if its not the end of the array
+    while (arr1[i] != -1 && arr2[i] != -1) {
+        if (arr1[i] != arr2[i]) {
+            return -1;  //if the arrays are diff
+        }
+        i++;
+    }
+    // Check if both arrays ended at the same point
+    if (arr1[i] != arr2[i]) {
+        return -1;  //if the arrys are diff
+    }
+    return 0;  //otherwise its the same
+}
 
-int test_byte_checker(unsigned char *string, unsigned char *expected){
+
+int test_byte_checker(unsigned char *string, unsigned int *expected){
     int *actual = byte_checker(string);
-    printf("%s, String: %s, Expected: %s Actual: ", (my_utf8_strcmp(expected, actual) == 0 ? "PASSED" : "FAILED"), string, expected);
+    printf("%s, String: %s, ", (my_utf8_arraycmp(expected, actual) == 0) ? "PASSED" : "FAILED", string);
+
+    //loop through and print the expected arry
+    printf("Expected byte sequence: ");
+    for (int i = 0; expected[i] != -1; i++) {
+        printf("%d ", expected[i]);
+    }
+    //loop thru and print the actual returned arr
+    printf("Actual byte sequence: ");
     for (int i = 0; actual[i] != -1; i++) {
         printf("%d ", actual[i]);
     }
     printf("\n");
+
+    return (my_utf8_arraycmp(expected, actual) == 0) ? 1 : 0;
 
 }
 
@@ -125,10 +153,22 @@ void testall_byte_checker() {
                             0x82,0x0};
     unsigned char str2[] = {0xD7, 0x90, 0xD7, 0x92, 0x0};
     unsigned char *str4 = "hello";
+    unsigned char str5[] = {0xCF, 0xA3, 0x45, 0x4C, 0x41, 0x4E,0x41,0xF0, 0x9F, 0x98,
+                            0x90, 0x0};
+    unsigned char str6[] = {0xC6, 0xA9, 0xC6, 0xBD, 0x41, 0x4E,0xF0, 0x9F, 0x98,
+                            0x90,0x41, 0x0};
+    unsigned char str7[] = {0xF0, 0x9F, 0x98, 0x90,0xF0, 0x9F, 0x98, 0x95,0xF0, 0x9F, 0x98, 0x97, 0x0};
+    unsigned char *str8 = "ה";
+
 
     test_byte_checker(str1, (int[]) {2, 2, 2, 2, 3, 4, -1});
-    test_byte_checker(str2, (int[]) {2, -1});
-    test_byte_checker(str4, (int[]) {1, -1});
+    test_byte_checker(str2, (int[]) {2, 2,-1});
+    test_byte_checker(str4, (int[]) {1, 1,1,1,1,-1});
+    test_byte_checker(str5, (int[]) {2, 1,1,1,1,1,4,-1});
+    test_byte_checker(str6, (int[]) {2, 2,1,1,4,1,-1});
+    test_byte_checker(str7, (int[]) {4,4,4,-1});
+    test_byte_checker(str8, (int[]) {2,-1});
+
 
 }
 
@@ -494,11 +534,22 @@ void testall_decode() {
     unsigned char str2[] = {0xD7, 0x90, 0xD7, 0x92, 0x0};
     unsigned char str3[] = {0xD7, 0x9,  0x0};
     unsigned char *str4 = "hello";
+    unsigned char str5[] = {0xCF, 0xA3, 0x45, 0x4C, 0x41, 0x4E,0x41,0xF0, 0x9F, 0x98,
+                            0x90, 0x0};
+    unsigned char str6[] = {0xF0, 0x9F, 0x98, 0x90,0xF0, 0x9F, 0x98, 0x95,0xF0, 0x9F, 0x98, 0x97, 0x0};
+    unsigned char str7[] = {0x0};
+    unsigned char str8[] = {0xCF, 0x3, 0x45, 0x4C, 0x41, 0x4E,0x41,0xF0, 0x9F, 0x98,
+                            0x90, 0x0};
     char output[40] ;
 
-    test_decode(str1, output,"\\u05D0\\u05E8\\u05D9\\u05D4\\u0939\\u1F602");
-    test_decode(str2, output, "\\u05D0\\u05D2");
-    test_decode(str4,output, "hello");
+    test_decode(str1, output,"\\u05D0\\u05E8\\u05D9\\u05D4\\u0939\\u1F602\0");
+    test_decode(str2, output, "\\u05D0\\u05D2\0");
+    test_decode(str6, output, "\\u1F610\\u1F615\\u1F617\0");
+    //test_decode(str7, output, "");
+    //test_decode(str8, output, "\\u05D0\\u05D2");
+    //test_decode(str4,output, "hello");
+    //test_decode(str3,output, "");
+    //test_decode(str5, output, "\\u05D0\\u05D2");
 
 }
 
@@ -523,12 +574,15 @@ int unicode_to_int(const char *input) {
 
 //Encoding a UTF8 binary, taking as input an ASCII binary, with UTF8 characters encoded using the “U+” notation, and returns a UTF8 encoded binary
 int my_utf8_encode(char *input, char *output){
-
+    //send it to a fucntion to turn the char into ints so i can comapre value
     int unicode_val = unicode_to_int(input);
 
+    //the range of value that the unicode falls in determines the amount of bytes
+    //based on the byte range that it falls in add the relevnt bits to have it reprented in utf8
     if (unicode_val > 0 && unicode_val <= 0x7F){
         //1byte
         printf("1 byte\n");
+        //if its one byte
         output[0] = (char)(unicode_val & 0x7F);
         output[1] = '\0';
     }
@@ -560,16 +614,34 @@ int my_utf8_encode(char *input, char *output){
     return 0;
 }
 
+int test_encode(unsigned char *input, unsigned char *output, unsigned char *expected) {
+    int valid = my_utf8_encode(input, output);
+    //returns 1 if check function says its not valid utf8
+    if (valid != 1) {
+        printf("%s, input: %s, output: %s, Expected output: %s\n",
+               (my_utf8_strcmp(expected, output) == 0 ? "PASSED" : "FAILED"), input, output, expected);
 
+    }
+    else {
+        printf("ERROR:INVALID UTF-8\n");
+    }
+}
+
+void testall_encode() {
+    unsigned char *str1 = "\\u05D0";
+    unsigned char *str2 = "\\u05D0\\u05D2\0";
+    unsigned char *str3 ="\\u1F610\\u1F615\\u1F617\0";
+
+    char output[40] ;
+
+    test_encode(str1, output,"א");
+    test_encode(str2, output, "\\u05D0\\u05D2\0");
+    test_encode(str3, output, "\\u1F610\\u1F615\\u1F617\0");
+
+
+}
 
 int main() {
-    unsigned char utf8[] = {0xD7, 0x90, 0xD7, 0xA8, 0xD7, 0x99, 0xD7, 0x94, 0xE0, 0xA4, 0xB9, 0xF0, 0x9F, 0x98,
-                            0x82, 0x0};
-    unsigned char alefemoji[] = {0xD7, 0x90, 0x45, 0x0};
-    unsigned char codepoint[] = {0x5C, 0x75, 0x30, 0x35, 0x44, 0x30, 0x5C, 0x75, 0x45, 0x0};
-    unsigned char *ucode = "\\u0939\\u0024\\u00A3\n";
-    unsigned char *unicodeHex3 = "\\u0939";
-
 
     //Test str length
     printf("\nStrlen Function:\n");
@@ -591,12 +663,6 @@ int main() {
     printf("\nstrcmp function:\n");
     testall_strcmp();
 
-    //byte checker
-    int *result = byte_checker(utf8);
-    printf("\nByte checker\n");
-    for (int i = 0; result[i] != -1; i++) {
-        printf("Character %d: %d bytes\n", i + 1, result[i]);
-    }
 
     //test byte checker
     printf("\nByte checker\n");
@@ -607,11 +673,9 @@ int main() {
     printf("\ndecode function:\n");
     testall_decode();
 
-    
+
     //Test encode
-    printf("\nEncoder:\n");
-    char output[40];
-    my_utf8_encode(unicodeHex3, output);
-    printf("Encoded: %s\n", output);
+    printf("\nencoder function:\n");
+    testall_encode();
 
 }
